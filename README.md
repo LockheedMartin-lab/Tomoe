@@ -1,2 +1,2 @@
 # Tomoe
-Yet another general purpose discord bot just a bit different
+Yet another general purpose discord bot - just a bit different
