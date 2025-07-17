@@ -8,6 +8,8 @@ $${\color{red}Code \space functionality \space is \space not \space guaranteed}$
 Tomoe is supposed to be a general purpuse bot designed for niche settings and will most likely be expended over time. 
 It'll be a moderation bot and might even get AI input in the future, that's further down the line though. 
 
+[![Discord](https://img.shields.io/discord/1394458619340394637?label=Join%20us%20on%20Discord&logo=discord&style=for-the-badge)](https://discord.gg/E3pDZYbhNt)
+
 
 <div align="left"><h2> Folders</h2></div>
 
