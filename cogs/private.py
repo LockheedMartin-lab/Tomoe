@@ -84,3 +84,4 @@ async def setup(bot: commands.Bot):
     for gid in guild_ids:
         bot.tree.add_command(command, guild=discord.Object(id=gid))
 
+print("✅ Private cog loaded and slash commands registered")

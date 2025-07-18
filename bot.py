@@ -25,6 +25,15 @@ async def ping(interaction: discord.Interaction):
     await interaction.response.send_message("🏓 Pong!")
 
 
+#Errorhaneleling permission missing
+@bot.tree.error
+async def on_app_command_error(interaction: discord.Interaction, error: app_commands.AppCommandError):
+    if isinstance(error, app_commands.MissingPermissions):
+        await interaction.response.send_message("❌ You don't have the required permissions to run this command.", ephemeral=True)
+    else:
+        await interaction.response.send_message("❌ An unexpected error occurred.", ephemeral=True)
+        raise error
+
 
 
 
