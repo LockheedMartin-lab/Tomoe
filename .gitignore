@@ -6,3 +6,4 @@ stop_bot.sh
 Images/.DS_Store
 .DS_Store
 config.json
+cogs/support/ticket.json

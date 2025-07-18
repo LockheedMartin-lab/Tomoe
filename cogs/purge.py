@@ -6,7 +6,10 @@ class DeleteMessages(commands.Cog):
     def __init__(self, bot):
         self.bot = bot
 
-    @app_commands.command(name="purge", description="Delete the last X messages in this channel.")
+    @app_commands.default_permissions(administrator=True)
+    @app_commands.command(
+        name="purge", 
+        description="Delete the last X messages in this channel.")
     @app_commands.checks.has_permissions(administrator=True)
     @app_commands.describe(amount="Number of messages to delete")
     async def purge(self, interaction: discord.Interaction, amount: int):
@@ -35,4 +38,3 @@ async def setup(bot):
         if "purge" not in existing_commands:
             bot.tree.add_command(cog.purge, guild=guild)
 
-    print("✅ DeleteMessages cog loaded")
