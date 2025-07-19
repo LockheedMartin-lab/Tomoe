@@ -1,4 +1,5 @@
 import os
+import re
 import discord
 from discord.ext import commands
 from discord import app_commands
@@ -9,6 +10,22 @@ load_dotenv(dotenv_path="bot.env")
 GUILD_IDS_RAW = os.getenv("GUILD_IDS", "")
 GUILD_IDS = [int(gid.strip()) for gid in GUILD_IDS_RAW.split(",") if gid.strip()]
 
+# --- Helpers ---
+
+def normalize_name(name: str) -> str:
+    """Normalize user input for consistent channel/role matching."""
+    name = name.strip().replace("!", "")
+    name = name.lower().replace(" ", "-")
+    name = re.sub(r"[^a-z0-9\-_]", "", name)
+    return name
+
+def normalize_discord_role_name(name: str) -> str:
+    """Normalize an actual Discord role name (e.g., remove emoji prefix)."""
+    if name.startswith("🔑"):
+        name = name[1:]
+    return normalize_name(name)
+
+# --- View for deletion confirmation ---
 
 class ConfirmDeleteView(discord.ui.View):
     def __init__(self, author_id: int, delete_callback):
@@ -23,7 +40,7 @@ class ConfirmDeleteView(discord.ui.View):
         if interaction.user.id != self.author_id:
             await interaction.response.send_message("❌ You cannot confirm this deletion.", ephemeral=True)
             return
-
+        
         await interaction.response.defer(ephemeral=True, thinking=False)
         await self.delete_callback()
         self.confirmed = True
@@ -37,22 +54,24 @@ class ConfirmDeleteView(discord.ui.View):
                 pass
 
 
-class PrivateDelete(commands.Cog):
+# --- Main Cog ---
+
+class Private_DeleteCog(commands.Cog):
     def __init__(self, bot):
         self.bot = bot
 
     @app_commands.guilds(*[discord.Object(id=gid) for gid in GUILD_IDS])
-    @app_commands.command(name="delete", description="Request deletion of a private space.")
+    @app_commands.command(name="private_delete", description="Request deletion of a private space.")
     @app_commands.describe(channel_name="Name of your private space to delete (base name only)")
     async def delete_space(self, interaction: discord.Interaction, channel_name: str):
         guild = interaction.guild
         author = interaction.user
-        name_lower = channel_name.lower()
+        normalized_name = normalize_name(channel_name)
 
         # Find the category and channels
-        category = discord.utils.get(guild.categories, name=channel_name)
-        text_channel = discord.utils.get(guild.text_channels, name=channel_name)
-        voice_channel = discord.utils.get(guild.voice_channels, name=channel_name)
+        category = discord.utils.find(lambda c: normalize_name(c.name.removeprefix("🔑")) == normalized_name, guild.categories)
+        text_channel = discord.utils.find(lambda c: normalize_name(c.name) == normalized_name, guild.text_channels)
+        voice_channel = discord.utils.find(lambda c: normalize_name(c.name) == normalized_name, guild.voice_channels)
 
         if not category and not text_channel and not voice_channel:
             await interaction.response.send_message(f"❌ Could not find a private space named `{channel_name}`.", ephemeral=True)
@@ -64,43 +83,29 @@ class PrivateDelete(commands.Cog):
             await interaction.response.send_message("❌ You don't have permission to delete this space.", ephemeral=True)
             return
 
-        # Define deletion logic
+        # Deletion logic
         async def delete_everything():
             deleted_items = {}
 
-            # Text channel
-            if text_channel:
-                try:
-                    await text_channel.delete(reason=f"Deleted by {author} via /delete")
-                    deleted_items["Text-Channel"] = text_channel.name
-                except Exception as e:
-                    print(f"❌ Failed to delete text channel: {e}")
+            # Delete channels
+            for item, label in [(text_channel, "Text-Channel"), (voice_channel, "Voice-Channel"), (category, "Category")]:
+                if item:
+                    try:
+                        await item.delete(reason=f"Deleted by {author} via /delete")
+                        deleted_items[label] = item.name
+                    except Exception as e:
+                        print(f"❌ Failed to delete {label}: {e}")
 
-            # Voice channel
-            if voice_channel:
-                try:
-                    await voice_channel.delete(reason=f"Deleted by {author} via /delete")
-                    deleted_items["Voice-Channel"] = voice_channel.name
-                except Exception as e:
-                    print(f"❌ Failed to delete voice channel: {e}")
-
-            # Category
-            if category:
-                try:
-                    await category.delete(reason=f"Deleted by {author} via /delete")
-                    deleted_items["Category"] = category.name
-                except Exception as e:
-                    print(f"❌ Failed to delete category: {e}")
-
-            # Roles
+            # Delete roles
             for role in guild.roles:
-                if role.name.lower() == f"🔑{name_lower}_owner":
+                role_clean = normalize_discord_role_name(role.name)
+                if role_clean == f"{normalized_name}_owner":
                     try:
                         await role.delete(reason=f"Deleted by {author} via /delete")
                         deleted_items["Owner-Role"] = role.name
                     except Exception as e:
                         print(f"❌ Failed to delete owner role: {e}")
-                elif role.name.lower() == f"🔑{name_lower}":
+                elif role_clean == normalized_name:
                     try:
                         await role.delete(reason=f"Deleted by {author} via /delete")
                         deleted_items["User-Role"] = role.name
@@ -109,14 +114,24 @@ class PrivateDelete(commands.Cog):
 
             if deleted_items:
                 formatted = "\n".join(f"{key}: `{value}`" for key, value in deleted_items.items())
-                await interaction.followup.send(
-                    f"✅ Deleted the private space `{channel_name}` and associated resources:\n{formatted}",
-                    ephemeral=True
-                )
+                try:
+                    await interaction.followup.send(
+                        f"✅ Deleted the private space `{channel_name}` and associated resources:\n{formatted}",
+                        ephemeral=True
+                    )
+                except discord.NotFound:
+                    try:
+                        await interaction.user.send(
+                            f"✅ Your private space `{channel_name}` was deleted, but the original channel was already gone."
+                        )
+                    except Exception:
+                        pass
+
+                
             else:
                 await interaction.followup.send("⚠️ Nothing was deleted.", ephemeral=True)
 
-        # Ask user for confirmation
+        # Ask for confirmation
         view = ConfirmDeleteView(author.id, delete_callback=delete_everything)
         await interaction.response.send_message(
             f"⚠️ Confirm deletion of your private space `{channel_name}` within 20 seconds.",
@@ -126,5 +141,6 @@ class PrivateDelete(commands.Cog):
         view.message = await interaction.original_response()
 
 
+# --- Setup ---
 async def setup(bot: commands.Bot):
-    await bot.add_cog(PrivateDelete(bot))
+    await bot.add_cog(Private_DeleteCog(bot))

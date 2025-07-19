@@ -2,25 +2,26 @@ import os
 from discord import Object, app_commands
 import discord
 from discord.ext import commands
-from discord import app_commands
 from dotenv import load_dotenv
+
 load_dotenv(dotenv_path="bot.env")
 
 GUILD_IDS_RAW = os.getenv("GUILD_IDS", "")
 GUILD_IDS = [int(gid.strip()) for gid in GUILD_IDS_RAW.split(",") if gid.strip()]
 
 
-class PrivateCreate(commands.Cog):
+class Private_Create(commands.Cog):
     def __init__(self, bot: commands.Bot):
         self.bot = bot
 
     def has_private_owner_role(self, member: discord.Member):
         return any(role.name.startswith("🔑") and role.name.endswith("_owner") for role in member.roles)
 
-    @app_commands.guilds(*[discord.Object(id=gid) for gid in GUILD_IDS])
+    @app_commands.guilds(*[Object(id=gid) for gid in GUILD_IDS])
     @commands.has_permissions(manage_channels=True)
-    @app_commands.command(name="privatecreate", description="Create a private category with role and channels.")
-    async def privatecreate(self, interaction: discord.Interaction, name: str):
+    @app_commands.command(name="private_create", description="Create a private category with role and channels.")
+    @app_commands.describe(channelname="The name of your private space")
+    async def private_create(self, interaction: discord.Interaction, channelname: str):
         guild = interaction.guild
         author = interaction.user
 
@@ -28,7 +29,7 @@ class PrivateCreate(commands.Cog):
             await interaction.response.send_message("❌ You already own a private space.", ephemeral=True)
             return
 
-        name_lower = name.lower()
+        name_lower = channelname.lower()
         existing_names = [c.name.lower() for c in list(guild.categories) + list(guild.channels)]
         if name_lower in existing_names:
             await interaction.response.send_message("❌ A category or channel with that name already exists.", ephemeral=True)
@@ -46,8 +47,8 @@ class PrivateCreate(commands.Cog):
         viewer_permissions = discord.Permissions()
         viewer_permissions.update(view_channel=True, connect=True, speak=True)
 
-        role_owner = await guild.create_role(name=f"🔑{name}_owner", permissions=owner_permissions)
-        role_viewer = await guild.create_role(name=f"🔑{name}", permissions=viewer_permissions)
+        role_owner = await guild.create_role(name=f"🔑{channelname}_owner", permissions=owner_permissions)
+        role_viewer = await guild.create_role(name=f"🔑{channelname}", permissions=viewer_permissions)
         await author.add_roles(role_owner)
 
         overwrites = {
@@ -61,13 +62,12 @@ class PrivateCreate(commands.Cog):
         }
 
         # Create category and channels
-        category = await guild.create_category(name=name, overwrites=overwrites)
-        await guild.create_text_channel(name=name, category=category, overwrites=overwrites)
-        await guild.create_voice_channel(name=name, category=category, overwrites=overwrites)
+        category = await guild.create_category(name=f"🔑{channelname}", overwrites=overwrites)
+        await guild.create_text_channel(name=channelname, category=category, overwrites=overwrites)
+        await guild.create_voice_channel(name=channelname, category=category, overwrites=overwrites)
 
-        await interaction.followup.send(f"✅ Private space `{name}` created!", ephemeral=True)
+        await interaction.followup.send(f"✅ Private space `{channelname}` created!", ephemeral=True)
 
-# ✅ Setup for this cog
+
 async def setup(bot: commands.Bot):
-    cog = PrivateCreate(bot)
-    await bot.add_cog(PrivateCreate(cog))
+    await bot.add_cog(Private_Create(bot))

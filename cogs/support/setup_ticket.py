@@ -9,7 +9,19 @@ TICKET_CATEGORY_NAME = "🙋support"
 TICKET_CHANNEL_NAME = "🙋support"
 TICKET_PREFIX = "ticket-"
 
-TICKET_DATA_FILE = os.path.join(os.path.dirname(__file__), "ticket.json")
+TICKET_PATH = os.path.join(os.path.dirname(__file__), "ticket.json")
+
+# Load/save helpers
+def load_ticket_data():
+    if not os.path.exists(TICKET_PATH):
+        return {}
+    with open(TICKET_PATH, "r", encoding="utf-8") as f:
+        return json.load(f)
+
+def save_ticket_data(data):
+    with open(TICKET_PATH, "w", encoding="utf-8") as f:
+        json.dump(data, f, indent=4)
+
 
 class CloseTicketView(discord.ui.View):
     def __init__(self):
@@ -21,48 +33,23 @@ class CloseTicketView(discord.ui.View):
         await sleep(7)
         await interaction.channel.delete()
 
-
 class TicketView(discord.ui.View):
     def __init__(self, bot):
         super().__init__(timeout=None)
         self.bot = bot
 
     def load_ticket_count(self, guild_id: int) -> int:
-        if not os.path.exists(TICKET_DATA_FILE):
-            # File does not exist yet, return 0
-            return 0
-
-        try:
-            with open(TICKET_DATA_FILE, "r", encoding="utf-8") as f:
-                data = json.load(f)
-            return data.get(str(guild_id), {}).get("ticket_count", 0)
-        except (json.JSONDecodeError, FileNotFoundError):
-            return 0
-
+        data = load_ticket_data()
+        return data.get(str(guild_id), {}).get("ticket_count", 0)
 
     def save_ticket_count(self, guild_id: int, count: int):
-        data = {}
-
-        # Ensure file exists, or initialize
-        if os.path.exists(TICKET_DATA_FILE):
-            try:
-                with open(TICKET_DATA_FILE, "r", encoding="utf-8") as f:
-                    data = json.load(f)
-            except (json.JSONDecodeError, FileNotFoundError):
-                data = {}
-
+        data = load_ticket_data()
         guild_key = str(guild_id)
         if guild_key not in data:
             data[guild_key] = {}
         data[guild_key]["ticket_count"] = count
-
-        try:
-            with open(TICKET_DATA_FILE, "w", encoding="utf-8") as f:
-                json.dump(data, f, indent=4)
-            print(f"[Ticket] Saved ticket count {count} for guild {guild_key}")
-        except Exception as e:
-            print(f"[Ticket] Failed to write ticket.json: {e}")
-
+        save_ticket_data(data)
+        # print(f"[Ticket] Saved ticket count {count} for guild {guild_key}") # <-for debugging if number doesn't work
 
     @discord.ui.button(label="Create ticket", emoji="📩", style=discord.ButtonStyle.primary, custom_id="create_ticket")
     async def create_ticket(self, interaction: discord.Interaction, button: discord.ui.Button):
