@@ -34,7 +34,7 @@ It'll be a moderation bot and might even get AI input in the future, that's furt
 
 $\color{red}{\space \space I \space do \space not \space own, \space nor \space claim \space any \space rights \space to \space the \space files \space listed \space under \space sources \space below \space or \space otherwise \space credited.}$
 
-* [Images](https://sites.nd.edu/gfu/files/2019/07/cheatsheet.pdf](https://www.crunchyroll.com/de/series/GZJH3D719/tsukimichi--moonlit-fantasy-?srsltid=AfmBOopdJg32eDUX_if-S-x2D1nGRt0inY3pH-QzROZ4MPBk-LrZhrgT )
+* [Images](https://www.crunchyroll.com/de/series/GZJH3D719/tsukimichi--moonlit-fantasy-?srsltid=AfmBOopdJg32eDUX_if-S-x2D1nGRt0inY3pH-QzROZ4MPBk-LrZhrgT )
 
 
 <div align="left"><h2> Licence</h2></div>
